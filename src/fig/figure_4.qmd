@@ -1,0 +1,97 @@
+---
+title: "F&Y Descriptive paper figures"
+format: html
+editor: visual
+---
+
+```{r}
+library(lubridate)
+library(patchwork)
+library(tidyverse)
+```
+
+```{r}
+
+theme_set(theme_light())
+
+```
+
+# Figure 4: Timing (new version)
+
+```{r}
+
+source("figure_base.R")
+```
+
+Load data
+
+```{r}
+
+# b, e, f
+fig4_data <- read_csv("../../data/fig4/figure_4.csv")
+
+# a
+food_timing_data = food_binning_from_fig4data(fig4_data)
+
+fig4_long <- pivot_longer_day_type(fig4_data)
+# d
+peaks_exp_data <- readRDS('../../data/fig4/peaks.rds')
+# "Each data point is the proportion of a participant's peaks preceded by a food intake"
+
+```
+
+Panels
+
+```{r}
+theme_set(theme_classic())
+```
+
+```{r}
+
+g_dishes <- 
+  food_timing_data %>% 
+  process_food_timing_data() %>% 
+  plot_food_timing_distribution() 
+
+g_glu <- plot_glucose_timing_distribution(fig4_long)
+
+g_exp_schema <- plot_png("../../data/fig4/peaks.png", 0)
+
+g_exp <- 
+  peaks_exp_data %>% 
+  process_peaks_exp_data() %>% 
+  plot_peak_exp(thresh = 90)
+
+g_sleep <- plot_sleep_start_and_end(fig4_long)
+
+g_sleep_dur <- plot_sleep_duration(fig4_long)
+
+
+```
+
+Assembly
+
+```{r}
+
+layout <- 
+  "
+AC
+BD
+EF
+"
+
+fig_4 <- 
+  (g_dishes + ggtitle("Food intake")) + 
+  (g_glu + ggtitle("Glucose"))  + 
+  g_exp_schema + g_exp + 
+  (g_sleep + ggtitle("Sleep")) + 
+  (g_sleep_dur + ggtitle("Sleep duration")) +
+  plot_layout(design = layout, widths = c(1.5,1)) +
+  plot_annotation(tag_levels = 'a')
+
+fig_4
+
+ggsave(fig_4, filename = "../../images/fig_4.png", 
+       width = 18, height = 12, units = "cm", dpi = 300, scale = 1.75)
+  
+```
