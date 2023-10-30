@@ -1,0 +1,133 @@
+---
+title: "Figure 3"
+format: html
+editor: visual
+---
+
+```{r}
+library(tidyverse)
+library(patchwork)
+theme_set(theme_classic())
+source("figure_base.R")
+```
+
+## Loading and formatting data
+
+```{r}
+
+df_raw <- read_csv("../../data/fig3/figure_3.csv")
+# str(df_raw)
+
+```
+
+```{r}
+
+df <- 
+  df_raw %>% 
+  mutate(days = days %>% factor(., levels = days))
+
+
+```
+
+Data is in wide format, we want them in long format
+
+```{r}
+
+df_long <- process_fig3_data(df)
+
+```
+
+x-axis limit for cohort B
+
+```{r}
+
+B_x_limit <- 28
+plus_days <- ((B_x_limit + 1):40) %>% as.character()
+days_levels <- levels(df_long$days)
+
+df_long <- 
+  df_long %>% 
+  mutate(
+    days = days %>% as.character(),
+    days = 
+      case_when(
+        (cohort == "B") & (days %in% plus_days) ~ "+",
+        TRUE ~ days
+      ) %>% 
+      factor(., levels = days_levels)
+  ) %>% 
+  group_by(
+    cohort, var_raw, var, variable, group, days
+  ) %>% 
+  summarize(
+    count = count %>% sum(),
+    .groups = "drop"
+  )
+
+```
+
+## Visualizations
+
+Exploratory
+
+```{r}
+
+ggplot(df_long, aes(x = days, y = count, fill = group)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  facet_grid(variable ~ cohort, scales = "free")
+
+```
+
+Actual figure
+
+```{r}
+
+g_cgm_B <- plot_fig3_distr(df_long, var = "CGM", co = "B") + xlab("")
+g_cgm_C <- plot_fig3_distr(df_long, var = "CGM", co = "C") + xlab("")
+
+g_food_B <- plot_fig3_distr(df_long, var = "Food intake", co = "B") + xlab("")
+g_food_C <- plot_fig3_distr(df_long, var = "Food intake", co = "C") + xlab("")
+
+g_pa_B <- plot_fig3_distr(df_long, var = "Activities", co = "B") + xlab("")
+g_pa_C <- plot_fig3_distr(df_long, var = "Activities", co = "C") + xlab("")
+
+g_survey_B <- plot_fig3_distr(df_long, var = "Survey", co = "B")
+g_survey_C <- plot_fig3_distr(df_long, var = "Survey", co = "C")
+  
+g_other_B <- plot_fig3_samples(df_long, var = "Other", co = "B")
+g_other_C <- plot_fig3_samples(df_long, var = "Other", co = "C")
+  
+  
+fig3 <- 
+  g_cgm_B + g_food_B + g_pa_B + g_survey_B + g_other_B + 
+  g_cgm_C + g_food_C + g_pa_C + g_survey_C + g_other_C +
+  plot_layout(ncol = 2, byrow = FALSE, width = c(1, 1.2)) +
+  plot_annotation(tag_levels = "a")
+
+fig3
+  
+ggsave(
+  fig3, filename = "../../images/fig_3.png", 
+  width = 18, height = 15, units = "cm", dpi = 300, scale = 1.75
+)
+
+
+
+```
+
+```{r}
+#| eval : false
+#| echo: false
+
+breaks <- c(0:days_max, "+")
+labels <- breaks
+labels[which(!(labels %in%  c(seq(0, days_max, by = 7), "+")))] <- ""
+
+ggplot(data, aes(x = days, y = count, fill = group)) + 
+  geom_bar(stat = "identity", position = "dodge") +
+  theme(legend.position = "top") +
+  ylab("Nb of participant") +
+  xlab("Days") +
+  scale_fill_manual("", values = colors) +
+  scale_x_discrete(breaks = breaks, labels = labels)
+```
